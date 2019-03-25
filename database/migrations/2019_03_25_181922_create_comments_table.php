@@ -17,7 +17,7 @@ class CreateCommentsTable extends Migration
             $table->bigIncrements('id');
             $table->bigInteger('user_id')->unsigned();
             $table->bigInteger('post_id')->unsigned();
-            $table->text('comments');
+            $table->text('body');
             $table->timestamps();
         });
 
@@ -25,6 +25,8 @@ class CreateCommentsTable extends Migration
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('post_id')->references('id')->on('posts');
         });
+
+        DB::update("ALTER TABLE comments AUTO_INCREMENT = 1;");
     }
 
     /**

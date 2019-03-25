@@ -23,6 +23,8 @@ class CreateUsersTable extends Migration
             $table->timestamps();
             $table->boolean('isAdmin');
         });
+
+        DB::update("ALTER TABLE users AUTO_INCREMENT = 1;");
     }
 
     /**
