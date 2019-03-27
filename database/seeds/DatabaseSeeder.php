@@ -70,5 +70,21 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => date("Y-m-d H:i:s"),
 	        ]);
         }
+
+        // generate hashtags
+        foreach (range(1,100) as $index) {
+	        DB::table('hashtags')->insert([
+                'hashtag' => $faker->word,
+	        ]);
+        }
+
+        foreach (range(1,500) as $index) {
+            $post_id = rand(1,20);
+            $hashtag_id = rand(1,100);
+	        DB::table('posts_hashtags')->insert([
+                'post_id' => $post_id,
+                'hashtag_id' => $hashtag_id,
+	        ]);
+        }
     }
 }

@@ -24,6 +24,8 @@ class CreatePostsTable extends Migration
         Schema::table('posts', function($table) {
             $table->foreign('user_id')->references('id')->on('users');
         });
+
+        DB::update("ALTER TABLE posts AUTO_INCREMENT = 1;");
     }
 
     /**
