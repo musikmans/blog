@@ -31,15 +31,30 @@ class DatabaseSeeder extends Seeder
         }
         // generate posts
         foreach (range(1,20) as $index) {
+            $date = $faker->dateTimeBetween($startDate = '-1 years', $endDate = 'now', $timezone = 'America/Vancouver');
             $k = array_rand($user_admin);
             $userId = $user_admin[$k];
 	        DB::table('posts')->insert([
                 'user_id' => $userId,
 	            'title' => $faker->catchPhrase,
                 'content' => $faker->realText($maxNbChars = 400, $indexSize = 2),
-                'created_at' => date("Y-m-d H:i:s"),
-                'updated_at' => date("Y-m-d H:i:s"),
-	        ]);
+                'created_at' => $date,
+                'updated_at' => $date,
+            ]);
+            
+            // generate comments
+            foreach (range(1,10) as $commentsIndex) {
+                $commentdate = $faker->dateTimeBetween($startDate = $date, $endDate = 'now', $timezone = 'America/Vancouver');
+                $post_id =  $index;
+                $user_id = rand(1,10);
+                DB::table('comments')->insert([
+                    'user_id' => $user_id,
+                    'post_id' => $post_id,
+                    'body' => $faker->realText($maxNbChars = 400, $indexSize = 2),
+                    'created_at' => $commentdate,
+                    'updated_at' => $commentdate,
+                ]);
+            }
         }
 
         // generate likes
@@ -53,19 +68,6 @@ class DatabaseSeeder extends Seeder
                 'user_id' => $user_id,
 	            'post_id' => $post_id,
                 'score' => $like_it_or_not,
-                'created_at' => date("Y-m-d H:i:s"),
-                'updated_at' => date("Y-m-d H:i:s"),
-	        ]);
-        }
-
-        // generate comments
-        foreach (range(1,500) as $index) {
-            $user_id = rand(1,10);
-            $post_id = rand(1,20);
-	        DB::table('comments')->insert([
-                'user_id' => $user_id,
-	            'post_id' => $post_id,
-                'body' => $faker->realText($maxNbChars = 400, $indexSize = 2),
                 'created_at' => date("Y-m-d H:i:s"),
                 'updated_at' => date("Y-m-d H:i:s"),
 	        ]);

@@ -48,4 +48,8 @@ class User extends Authenticatable
 
         return $this->api_token;
     }
+
+    public function posts() {
+        return $this->hasMany('App\Post');
+    }
 }

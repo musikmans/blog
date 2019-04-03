@@ -52,7 +52,7 @@ class LoginController extends Controller
             ]);
         }
 
-        return $this->sendFailedLoginResponse($request);
+        return response()->json($this->sendFailedLoginResponse($request));
     }
 
     public function logout(Request $request)
