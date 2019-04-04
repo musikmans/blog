@@ -5,9 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Post;
 use App\User as User;
-use App\Like as Like;
-use App\Comment as Comment;
-use App\Hashtag as Hashtag;
 
 class PostController extends Controller
 {
@@ -76,9 +73,17 @@ class PostController extends Controller
 
     public function store(Request $request)
     {
-        $post = Post::create($request->all());
-
-        return response()->json($post, 201);
+        $token = $request->api_token;
+        $user = \App\User::where('api_token', $token)->first();
+        $userId = $user->id;
+        $isAdmin = $user->isAdmin;
+        if ($isAdmin){
+            $post = Post::create($request->all() + ['user_id' => $userId]);
+            return response()->json($post, 201);
+        } else {
+            $message[] = "Unauthorized access, only admin can post blog";
+            return response()->json($message, 403);
+        }
     }
 
     public function update(Request $request, Post $post)
