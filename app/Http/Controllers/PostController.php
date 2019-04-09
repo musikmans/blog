@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use DB;
 use App\Post;
 use App\User as User;
+use App\Hashtag as Hashtag;
 
 class PostController extends Controller
 {
@@ -30,13 +32,27 @@ class PostController extends Controller
         */
     }
 
-    public function show(Post $post)
+    public function show(Request $request, Post $post)
     {   
+        // checking if a user is currenttly logged and getting his id
+        // in order to determine if he can edit post or a comment
+        $token = $request->header('Api-Token');
+        $token = substr($token, 7);
+        $currentuser = \App\User::where('api_token', $token)->first();
+        if (is_object($currentuser)) {
+            $currentUserId = $currentuser->id;
+        } else {
+            $currentUserId = 0;
+        }
+
         $user_instance = new User();
         $post_id = $post['id'];
         $userId = $post['user_id'];
         $user = $user_instance->find($userId);
         $post['author'] = $user->name;
+        if ($currentUserId===$userId) {
+        $post['authorIsCurrentUser'] = true;
+        }
         // Getting article score
         $scores = \App\Post::find($post_id)->points;
         $points = [];
@@ -60,11 +76,17 @@ class PostController extends Controller
             $userId = $comment['user_id'];
             $user = $user_instance->find($userId);
             $user->name;
+            if ($currentUserId===$userId) {
+                $bool = true;
+            } else {
+                $bool = false;
+            }
             $comments_lists[] = $array = array(
                 "author"  => $user->name,
                 "body" => $comment['body'],
                 "created_at" => $comment['created_at'],
                 "updated_at" => $comment['updated_at'],
+                "commentsCanBeEdited" => $bool,
             );
         }
         $post['comments'] = $comments_lists;
@@ -78,8 +100,38 @@ class PostController extends Controller
         $userId = $user->id;
         $isAdmin = $user->isAdmin;
         if ($isAdmin){
-            $post = Post::create($request->all() + ['user_id' => $userId]);
-            return response()->json($post, 201);
+            $validatedData = $request->validate([
+                'title' => 'required|unique:posts|max:255',
+                'content' => 'required',
+                'hashtags' => 'required',
+            ]);
+            if (isset($errors)){
+                return response()->json($errors, 422); 
+            } else {
+                $post = Post::create(['title' => $request->title, 'content' => $request->content, 'user_id' => $userId, 'updated_at' => date("Y-m-d H:i:s"), 'created_at' => date("Y-m-d H:i:s")]);
+                $postId = $post->id;
+                $hashtagsArray=explode(',', $request->hashtags);
+                foreach ($hashtagsArray as $hashtag){
+                    // remove empty spaces
+                    $hashtag = preg_replace('/\s+/', '', $hashtag);
+                    $hashtag = strtolower($hashtag);
+                    // Will create hashtags that doesn't exist
+                    $tags = \App\Hashtag::firstOrCreate(['hashtag' => $hashtag]);
+                    // Update reference table
+                    $hashtagId=$tags->id;
+                    $hashpost = DB::table('posts_hashtags')->insert(
+                        ['post_id' => $postId, 'hashtag_id' => $hashtagId]
+                    );
+                }
+                // add hashtags to the post object
+                $tags = \App\Hashtag::find($postId);
+                $hashes = [];
+                foreach ($tags->Hashtags as $hashtag){
+                    $hashes[]=$hashtag->hashtag;
+                }
+                $post['hashtags']=$hashes;
+                return response()->json($post, 201);     
+            }
         } else {
             $message[] = "Unauthorized access, only admin can post blog";
             return response()->json($message, 403);
@@ -88,9 +140,92 @@ class PostController extends Controller
 
     public function update(Request $request, Post $post)
     {
-        $post->update($request->all());
+        // check if the person own the post or not
+        $token = $request->api_token;
+        $user = \App\User::where('api_token', $token)->first();
+        $userId = $user->id;
+        $postUserId = $post['user_id'];
+        $postId = $post['id'];
+        if ($userId === $postUserId){
+            // check if title is unique
+            $title = $request->title;
+            if ($title=='') {
+                $errors['title']=[
+                    "Title can't be empty"
+                ];
+            }
+            if ($title!=$post['title']) {
+                $posts = DB::table('posts')
+                ->where('title', $title)
+                ->get();
+                if (!empty($posts[0])){
+                    $errors['title']=[
+                        "Title must be unique"
+                    ];
+                }
+            }
+            if (strlen($title)>255) {
+                $errors['title']=[
+                    "Title must be smaller than 256 characters"
+                ];
+            }
+            if (empty($request->content)) {
+                $errors['content']=[
+                    "Content can't be empty"
+                ];
+            }
+            if (empty($request->hashtags)) {
+                $errors['hahstags']=[
+                    "Hashtags can't be empty"
+                ];
+            }
+            if (isset($errors)){
+                return response()->json($errors, 422); 
+            } else {
+            // user can edit 
+            // get all hashtag store for that post
+            $tags = \App\Hashtag::find($postId);
+            $current_hashtags = [];
+            foreach ($tags->Hashtags as $hashtag){
+                $current_hashtags[]=$hashtag->hashtag;
+            }
+            // Hashes in the current edit
+            $new_hashtags = explode(',', preg_replace('/\s+/', '', strtolower($request->hashtags)));
+            $result_to_delete = array_diff($current_hashtags, $new_hashtags);
+            $result_to_add = array_diff($new_hashtags, $current_hashtags);
+            // delete reference to hashtag
+            foreach ($result_to_delete as $destroy){
+                echo $destroy;
+                $posts = DB::table('posts_hashtags')
+                ->join('hashtags', 'posts_hashtags.hashtag_id', '=', 'hashtags.id')
+                ->where('hashtags.hashtag', $destroy)
+                ->delete();
+            }
+            // add new hashtags to list
+            foreach ($result_to_add as $add){
+                $tags = \App\Hashtag::firstOrCreate(['hashtag' => $add]);
+                // Update reference table
+                $hashtagId=$tags->id;
+                $hashpost = DB::table('posts_hashtags')->insert(
+                    ['post_id' => $postId, 'hashtag_id' => $hashtagId]
+                );
+            }
+            $post->update(['title' => $request->title, 'content' => $request->content, 'user_id' => $userId, 'updated_at' => date("Y-m-d H:i:s")]);
 
-        return response()->json($post, 200);
+            // add hashtags to the post object
+            $tags = \App\Hashtag::find($postId);
+            $hashes = [];
+            foreach ($tags->Hashtags as $hashtag){
+                $hashes[]=$hashtag->hashtag;
+            }
+            $post['hashtags']=$hashes;
+
+            return response()->json($post, 200);
+            }
+        } else {
+            $message[] = "Unauthorized access, only the owner of the post can edit";
+            return response()->json($message, 403);
+        }
     }
 
     public function delete(Post $post)
