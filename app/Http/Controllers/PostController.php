@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use DB;
 use App\Post;
 use App\User as User;
-use App\Hashtag as Hashtag;
 
 class PostController extends Controller
 {
@@ -21,15 +20,6 @@ class PostController extends Controller
             $post['author'] = $user->name;
         }
         return response()->json($posts, 200);
-
-        /* Another way without using eloquent
-        $posts = DB::table('posts')
-            ->join('users', 'posts.user_id', '=', 'users.id')
-            ->select('posts.id', 'title', 'content', 'name as author','posts.created_at', 'posts.updated_at')
-            ->orderBy('posts.updated_at', 'desc')
-            ->get();
-        return $posts;
-        */
     }
 
     public function show(Request $request, Post $post)
@@ -52,11 +42,17 @@ class PostController extends Controller
         $post['author'] = $user->name;
         if ($currentUserId===$userId) {
         $post['authorIsCurrentUser'] = true;
+        } else {
+        $post['authorIsCurrentUser'] = false;
         }
         // Getting article score
         $scores = \App\Post::find($post_id)->points;
         $points = [];
+        $post['currentUserScore'] = 0;
         foreach ($scores as $pointage){
+            if ($pointage->user_id===$currentuser){
+                $post['currentUserScore']=$pointage->score;
+            }
             $points[]=$pointage->score;
         }
         $post['points']=array_sum($points);
@@ -147,13 +143,16 @@ class PostController extends Controller
         $postUserId = $post['user_id'];
         $postId = $post['id'];
         if ($userId === $postUserId){
-            // check if title is unique
+            // Doing validation here manually as i can't run the regular validation
+            // with Put or Patch
+            // check if title is empty
             $title = $request->title;
             if ($title=='') {
                 $errors['title']=[
                     "Title can't be empty"
                 ];
             }
+            // check if title is unique
             if ($title!=$post['title']) {
                 $posts = DB::table('posts')
                 ->where('title', $title)
@@ -164,16 +163,19 @@ class PostController extends Controller
                     ];
                 }
             }
+            // check if title is smaller than 255 character
             if (strlen($title)>255) {
                 $errors['title']=[
                     "Title must be smaller than 256 characters"
                 ];
             }
+            // check if content is empty
             if (empty($request->content)) {
                 $errors['content']=[
                     "Content can't be empty"
                 ];
             }
+             // check if hashtags is empty
             if (empty($request->hashtags)) {
                 $errors['hahstags']=[
                     "Hashtags can't be empty"
@@ -199,6 +201,7 @@ class PostController extends Controller
                 $posts = DB::table('posts_hashtags')
                 ->join('hashtags', 'posts_hashtags.hashtag_id', '=', 'hashtags.id')
                 ->where('hashtags.hashtag', $destroy)
+                ->where('posts_hashtags.post_id', $postId)
                 ->delete();
             }
             // add new hashtags to list
@@ -228,10 +231,18 @@ class PostController extends Controller
         }
     }
 
-    public function delete(Post $post)
-    {
-        $post->delete();
-
-        return response()->json(null, 204);
+    public function delete(Request $request, Post $post)
+    {   
+        $token = $request->api_token;
+        $user = \App\User::where('api_token', $token)->first();
+        $userId = $user->id;
+        if ($post['user_id']===$userId)
+        {
+            $post->delete();
+            return response()->json(null, 204);
+        } else {
+            $message[] = "Unauthorized access, only the owner of the post can delete";
+            return response()->json($message, 403);
+        }
     }
 }

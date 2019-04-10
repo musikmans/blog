@@ -22,6 +22,8 @@ Route::group(['middleware' => 'auth:api'], function() {
 
 Route::get('posts', 'PostController@index');
 Route::get('posts/{post}', 'PostController@show');
+Route::get('hashtags', 'HashtagController@index');
+Route::get('hashtags/{hashtag}', 'HashtagController@search');
 Route::post('register', 'Auth\RegisterController@register');
 Route::post('login', 'Auth\LoginController@login');
 Route::post('logout', 'Auth\LoginController@logout');

@@ -21,7 +21,7 @@ class CreatePostsHashtagsTable extends Migration
         });
 
         Schema::table('posts_hashtags', function($table) {
-            $table->foreign('post_id')->references('id')->on('posts');
+            $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade');
             $table->foreign('hashtag_id')->references('id')->on('hashtags');
         });
 

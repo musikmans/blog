@@ -4,6 +4,7 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 
+
 class Post extends Model
 {
     //
@@ -20,6 +21,11 @@ class Post extends Model
     public function Comments()
     {
         return $this->hasMany('App\Comment');
+    }
+
+    public function Hashtags()
+    {
+        return $this->hasMany('App\Hashtag');
     }
 
     public function Points()
