@@ -24,7 +24,7 @@ class HashtagController extends Controller
         ->join('hashtags', 'posts_hashtags.hashtag_id', '=', 'hashtags.id')
         ->join('users', 'posts.user_id', '=', 'users.id')
         ->where('hashtags.hashtag', $search)
-        ->select('posts.id', 'posts.title', 'posts.content', 'posts.created_at', 'posts.updated_at', 'users.name')
+        ->select('posts.id', 'posts.title', 'posts.content', 'posts.created_at', 'posts.updated_at', 'users.name as author')
         ->get();
         return response()->json($posts, 200);
     }

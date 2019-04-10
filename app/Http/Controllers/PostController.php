@@ -25,16 +25,18 @@ class PostController extends Controller
     public function show(Request $request, Post $post)
     {   
         // checking if a user is currenttly logged and getting his id
-        // in order to determine if he can edit post or a comment
+        // in order to determine if he can edit post or a comment or he's an admin
         $token = $request->header('Api-Token');
         $token = substr($token, 7);
-        $currentuser = \App\User::where('api_token', $token)->first();
-        if (is_object($currentuser)) {
-            $currentUserId = $currentuser->id;
-        } else {
-            $currentUserId = 0;
+        $currentUserId = 0;
+        $isCurrentUserAdmin = 0;
+        if (!$token==""){
+            $currentuser = \App\User::where('api_token', $token)->first();
+            if (is_object($currentuser)) { 
+                $currentUserId = $currentuser->id;
+                $isCurrentUserAdmin = $currentuser->isAdmin;
+            }
         }
-
         $user_instance = new User();
         $post_id = $post['id'];
         $userId = $post['user_id'];
@@ -46,16 +48,16 @@ class PostController extends Controller
         $post['authorIsCurrentUser'] = false;
         }
         // Getting article score
-        $scores = \App\Post::find($post_id)->points;
-        $points = [];
         $post['currentUserScore'] = 0;
-        foreach ($scores as $pointage){
-            if ($pointage->user_id===$currentuser){
-                $post['currentUserScore']=$pointage->score;
-            }
-            $points[]=$pointage->score;
+        $post['points'] = \App\Like::where('post_id', $post_id)->sum('score');
+        $currentUserScore = \App\Like::where('post_id', $post_id)
+        ->where('user_id', $currentUserId)
+        ->first();
+        print_r($currentUserScore);
+        if (is_object($currentUserScore)) { 
+            $post['currentUserScore'] = $currentUserScore->score;
         }
-        $post['points']=array_sum($points);
+
         // Sorting Hashtags
         $tags = \App\Hashtag::find($post_id);
         $hashes = [];
@@ -71,8 +73,8 @@ class PostController extends Controller
             $user_instance = new User();
             $userId = $comment['user_id'];
             $user = $user_instance->find($userId);
-            $user->name;
-            if ($currentUserId===$userId) {
+            // only comments owner or admin (to moderate) can edit or delete the comment
+            if ($currentUserId===$userId || $isCurrentUserAdmin===1) {
                 $bool = true;
             } else {
                 $bool = false;
@@ -91,10 +93,10 @@ class PostController extends Controller
 
     public function store(Request $request)
     {
-        $token = $request->api_token;
-        $user = \App\User::where('api_token', $token)->first();
-        $userId = $user->id;
+        $userId = auth('api')->user()->id;
+        $user = \App\User::where('id', $userId)->first();
         $isAdmin = $user->isAdmin;
+        $name = $user->name;
         if ($isAdmin){
             $validatedData = $request->validate([
                 'title' => 'required|unique:posts|max:255',
@@ -126,6 +128,7 @@ class PostController extends Controller
                     $hashes[]=$hashtag->hashtag;
                 }
                 $post['hashtags']=$hashes;
+                $post['author']=$name;
                 return response()->json($post, 201);     
             }
         } else {
@@ -137,9 +140,9 @@ class PostController extends Controller
     public function update(Request $request, Post $post)
     {
         // check if the person own the post or not
-        $token = $request->api_token;
-        $user = \App\User::where('api_token', $token)->first();
-        $userId = $user->id;
+        $userId = auth('api')->user()->id;
+        $user = \App\User::where('id', $userId)->first();
+        $name = $user->name;
         $postUserId = $post['user_id'];
         $postId = $post['id'];
         if ($userId === $postUserId){
@@ -222,6 +225,7 @@ class PostController extends Controller
                 $hashes[]=$hashtag->hashtag;
             }
             $post['hashtags']=$hashes;
+            $post['author']=$name;
 
             return response()->json($post, 200);
             }
@@ -233,9 +237,7 @@ class PostController extends Controller
 
     public function delete(Request $request, Post $post)
     {   
-        $token = $request->api_token;
-        $user = \App\User::where('api_token', $token)->first();
-        $userId = $user->id;
+        $userId = auth('api')->user()->id;
         if ($post['user_id']===$userId)
         {
             $post->delete();
