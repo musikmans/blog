@@ -80,6 +80,7 @@ class PostController extends Controller
                 $bool = false;
             }
             $comments_lists[] = $array = array(
+                "id"  => $comment['id'],
                 "author"  => $user->name,
                 "body" => $comment['body'],
                 "created_at" => $comment['created_at'],
@@ -99,7 +100,7 @@ class PostController extends Controller
         $name = $user->name;
         if ($isAdmin){
             $validatedData = $request->validate([
-                'title' => 'required|unique:posts|max:255',
+                'title' => 'required|unique:posts|min:255',
                 'content' => 'required',
                 'hashtags' => 'required',
             ]);
@@ -146,44 +147,11 @@ class PostController extends Controller
         $postUserId = $post['user_id'];
         $postId = $post['id'];
         if ($userId === $postUserId){
-            // Doing validation here manually as i can't run the regular validation
-            // with Put or Patch
-            // check if title is empty
-            $title = $request->title;
-            if ($title=='') {
-                $errors['title']=[
-                    "Title can't be empty"
-                ];
-            }
-            // check if title is unique
-            if ($title!=$post['title']) {
-                $posts = DB::table('posts')
-                ->where('title', $title)
-                ->get();
-                if (!empty($posts[0])){
-                    $errors['title']=[
-                        "Title must be unique"
-                    ];
-                }
-            }
-            // check if title is smaller than 255 character
-            if (strlen($title)>255) {
-                $errors['title']=[
-                    "Title must be smaller than 256 characters"
-                ];
-            }
-            // check if content is empty
-            if (empty($request->content)) {
-                $errors['content']=[
-                    "Content can't be empty"
-                ];
-            }
-             // check if hashtags is empty
-            if (empty($request->hashtags)) {
-                $errors['hahstags']=[
-                    "Hashtags can't be empty"
-                ];
-            }
+            $request->validate([
+                'title' => 'required|unique:posts|min:255',
+                'content' => 'required',
+                'hashtags' => 'required',
+            ]);
             if (isset($errors)){
                 return response()->json($errors, 422); 
             } else {

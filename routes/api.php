@@ -18,8 +18,11 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('posts', 'PostController@store');
     Route::put('posts/{post}', 'PostController@update');
     Route::delete('posts/{post}', 'PostController@delete');
-    Route::post('posts/{post}/likes', 'LikeController@create')->middleware('likes');;
+    Route::post('posts/{post}/likes', 'LikeController@create')->middleware('likes');
     Route::delete('posts/{post}/likes', 'LikeController@delete');
+    Route::post('posts/{post}/comments', 'CommentController@create');
+    Route::put('posts/{post}/comments/{comment_id}', 'CommentController@edit');
+    Route::delete('posts/{post}/comments/{comment_id}', 'CommentController@delete');
 });
 
 Route::get('posts', 'PostController@index');
