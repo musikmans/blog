@@ -23,6 +23,7 @@ Route::group(['middleware' => 'auth:api'], function() {
     Route::post('posts/{post}/comments', 'CommentController@create');
     Route::put('posts/{post}/comments/{comment_id}', 'CommentController@edit');
     Route::delete('posts/{post}/comments/{comment_id}', 'CommentController@delete');
+    Route::get('users/current', 'UserController@current');
 });
 
 Route::get('posts', 'PostController@index');
@@ -30,7 +31,7 @@ Route::get('posts/{post}', 'PostController@show');
 Route::get('hashtags', 'HashtagController@index');
 Route::get('hashtags/{hashtag}', 'HashtagController@search');
 Route::post('register', 'Auth\RegisterController@register');
-Route::post('login', 'Auth\LoginController@login');
+Route::options('login', 'Auth\LoginController@login');
 Route::post('logout', 'Auth\LoginController@logout');
 Route::get('/validate-token', function () {
     return ['data' => 'Token is valid'];
