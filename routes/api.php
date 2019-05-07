@@ -32,7 +32,7 @@ Route::get('hashtags', 'HashtagController@index');
 Route::get('hashtags/{hashtag}', 'HashtagController@search');
 Route::post('register', 'Auth\RegisterController@register');
 Route::options('login', 'Auth\LoginController@login');
-Route::post('logout', 'Auth\LoginController@logout');
+Route::delete('logout', 'Auth\LoginController@logout');
 Route::get('/validate-token', function () {
     return ['data' => 'Token is valid'];
 })->middleware('auth:api');

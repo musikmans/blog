@@ -39,10 +39,13 @@ class LoginController extends Controller
         if ($this->attemptLogin($request)) {
             $user = $this->guard()->user();
             $user->generateToken();
+            if ($user->isAdmin===1){
+                $user['canPostBlog']=1;
+            } else {
+                $user['canPostBlog']=0;
+            }
 
-            return response()->json([
-                'data' => $user->toArray(),
-            ]);
+            return response()->json($user, 200);
         }
 
         return response()->json($this->sendFailedLoginResponse($request));

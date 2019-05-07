@@ -16,7 +16,11 @@ class UserController extends Controller
         if (!$token==""){
             $currentuser = \App\User::where('api_token', $token)->first();
         }
-
+        if ($currentuser->isAdmin===1){
+            $currentuser['canPostBlog']=1;
+        } else {
+            $currentuser['canPostBlog']=0;
+        }
         return response()->json($currentuser, 200);
     }
 }
